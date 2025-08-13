@@ -99,7 +99,6 @@ class TickerBookingSerializer(serializers.Serializer):
         event = Event.objects.get(id=data['event'])
         total_person = event.capacity
 
-        if total_person > 30:
+        if total_person < 30:
             raise serializers.ValidationError("You can only book 30 tickets")
-
         return data
