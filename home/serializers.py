@@ -63,22 +63,32 @@ class TickerBookingSerializer(serializers.Serializer):
             raise serializers.ValidationError("User does not exist.")
         return value
     
-    def validate_total_person(self, value):
-        pass             
-    
     # creating tickets and booking
     def create(self, validated_data):
+        print("=== DEBUG CREATE METHOD ===")
+        print(f"validated_data: {validated_data}")
+        
         event = Event.objects.get(id=validated_data['event'])
         user = User.objects.get(id=validated_data['user'])
-        total_person =  validated_data['total_person']
+        total_person = validated_data['total_person']
         ticket_type = validated_data['ticket_type']
-
+        
+        print(f"event: {event}")
+        print(f"user: {user}")
+        print(f"total_person: {total_person} (type: {type(total_person)})")
+        print(f"ticket_type: {ticket_type}")
+        
+        # Check if total_person is None
+        if total_person is None:
+            print("❌ total_person is None!")
+            raise serializers.ValidationError("total_person cannot be None")
+        
         ticket = Ticket.objects.create(
-            event = event,
-            ticket_type= ticket_type,
+            event=event,
+            ticket_type=ticket_type,
             total_person=total_person
         )
-
+        
         total_price = event.ticket_price * total_person
         booking = Booking.objects.create(
             ticket=ticket,
@@ -86,7 +96,7 @@ class TickerBookingSerializer(serializers.Serializer):
             status="Paid",
             total_price=total_price
         )
-
+        
         return {
             "event": event.id,
             "user": user.id,
@@ -97,8 +107,14 @@ class TickerBookingSerializer(serializers.Serializer):
     
     def validate(self, data):
         event = Event.objects.get(id=data['event'])
-        total_person = event.capacity
-
-        if total_person < 30:
-            raise serializers.ValidationError("You can only book 30 tickets")
+        requested_persons = data['total_person']  # Use the input value
+        
+        # Check if booking exceeds reasonable limits
+        if requested_persons > 30:
+            raise serializers.ValidationError("You can only book maximum 30 tickets")
+        
+        # Check if event has enough capacity
+        if requested_persons > event.capacity:
+            raise serializers.ValidationError(f"Event capacity is {event.capacity}. You requested {requested_persons} tickets.")
+        
         return data
